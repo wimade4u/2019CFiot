@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script type="text/javascript" src="lib/axios/dist/axios.standalone.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/rollups/hmac-sha256.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/rollups/sha256.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/components/hmac.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/components/enc-base64.js"></script>
+    <script type="text/javascript" src="lib/url-template/url-template.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/sigV4Client.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/apiGatewayClient.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/simpleHttpClient.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/utils.js"></script>
+    <script type="text/javascript" src="apigClient.js"></script>
+</head>
+<style>
+    .lds-ring {
+        display: inline-block;
+        position: relative;
+        width: 64px;
+        height: 64px;
+    }
+    
+    .lds-ring div {
+        box-sizing: border-box;
+        display: block;
+        position: absolute;
+        width: 51px;
+        height: 51px;
+        margin: 6px;
+        border: 6px solid #fff;
+        border-radius: 50%;
+        animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        border-color: #fff transparent transparent transparent;
+    }
+    
+    .lds-ring div:nth-child(1) {
+        animation-delay: -0.45s;
+    }
+    
+    .lds-ring div:nth-child(2) {
+        animation-delay: -0.3s;
+    }
+    
+    .lds-ring div:nth-child(3) {
+        animation-delay: -0.15s;
+    }
+    
+    @keyframes lds-ring {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+<style>
+    .btn-file {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-file input[type=file] {
+        position: absolute;
+        top: 0;
+        right: 0;
+        min-width: 100%;
+        min-height: 100%;
+        font-size: 100px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        outline: none;
+        background: white;
+        cursor: inherit;
+        display: block;
+    }
+    
+    #img-upload {
+        width: 100%;
+    }
+</style>
+<script>
+    $(document).ready(function() {
+        $(document).on('change', '.btn-file :file', function() {
+            var input = $(this),
+                label = input.val().replace(/\\/g, '/').replace(/.*\//, '');
+            input.trigger('fileselect', [label]);
+        });
+
+        $('.btn-file :file').on('fileselect', function(event, label) {
+
+            var input = $(this).parents('.input-group').find(':text'),
+                log = label;
+
+            if (input.length) {
+                input.val(log);
+            } else {
+                if (log) alert(log);
+            }
+
+        });
+
+        function readURL(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+
+                reader.onload = function(e) {
+                    $('#img-upload').attr('src', e.target.result);
+                }
+
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        $("#imgInp").change(function() {
+            readURL(this);
+        });
+    });
+</script>
+
+<body>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.260.1.min.js"></script>
+    <script>
+        // AWS Cognito Identity Credentials
+        AWS.config.region = ''; // Region
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: '',
+        });
+    </script>
+    <nav class="navbar navbar-dark bg-dark" style="background-color: black;">
+        <a class="navbar-brand" href="#" style="color:#FFFFFF;">Facial Detect Application</a>
+    </nav>
+
+    <div class="container">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Upload Image</label>
+                <div class="input-group">
+                    <span class="input-group-btn">
+                        <span class="btn btn-default btn-file">
+                            Browse… <input type="file" id="imgInp">
+                        </span>
+                    </span>
+                    <input type="text" class="form-control" readonly>
+                </div>
+                <div id="load" class="lds-ring">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+                <img id='img-upload' />
+            </div>
+            <button id="snap" class="btn btn-primary btn-lg" style="">Click here to upload a Photo</button>
+            <h3 id="Face"></h3>
+        </div>
+    </div>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', function() { /*fun code to run*/
+        // Trigger take photo 
+        document.getElementById("snap").addEventListener("click", function() {
+            $('#load').show();
+            // generate Image
+            var blob = dataURItoBlob($('#img-upload').attr("src"));
+            console.log("Blob: ", $('#img-upload').attr("src"));
+            // upload image to s3 bucket
+            uploadToS3(blob);
+        });
+    })
+</script>
+<script>
+    function dataURItoBlob(dataURI) {
+        var byteString;
+        if (dataURI.split(',')[0].indexOf('base64') >= 0)
+            byteString = atob(dataURI.split(',')[1]);
+        else
+            byteString = unescape(dataURI.split(',')[1]);
+        // separate out the mime component
+        var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+        // write the bytes of the string to a typed array
+        var ia = new Uint8Array(byteString.length);
+        for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ia], {
+            type: mimeString
+        });
+    }
+
+    function getCurrentTime() {
+        var time = Date.now();
+        const timestamp = Math.floor(time / 1000);
+        return timestamp.toString();
+    }
+
+    function uploadToS3(blob) {
+        $('#Face').html = "";
+        // set bucket name
+        var bucket = 'your bucket name';
+
+        var s3 = new AWS.S3({
+            params: {
+                Bucket: bucket
+            }
+        });
+
+        // use current time to set file name 
+        var objectName = getCurrentTime() + ".png";
+
+        var rekognition = new AWS.Rekognition();
+        var pic_params = {
+            Image: {
+                S3Object: {
+                    Bucket: bucket,
+                    Name: objectName
+                }
+            },
+            Attributes: ["ALL"]
+        };
+
+        // upload to s3 bucket
+        s3.upload({
+            Key: objectName,
+            Body: blob,
+            ContentType: 'image/png',
+            ACL: 'public-read'
+        }, function(err, data) {
+            if (err) {
+                console.log(err, err.stack)
+                return alert('There was an error uploading your photo: ', err.stack);
+            }
+            alert('Successfully uploaded photo! Please wait for facial analysis...');
+            identityFace(bucket, objectName)
+        });
+    }
+
+    function identityFace(bucket, objectName) {
+        var apigClient = apigClientFactory.newClient();
+        var params = {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
+        //    console.log(params);
+        var body = {
+            Bucket: bucket,
+            ObjectName: objectName
+        };
+        var additionalParams = {
+            headers: {},
+            queryParams: {
+
+            }
+        };
+
+        apigClient.getIdentifyResultPost(params, body, additionalParams).then(function(result) {
+            console.log(result);
+            var faceMessage = JSON.stringify(result.data);
+            if (faceMessage.includes("InvalidParameterException")) {
+                faceMessage = "There is no face in this image.";
+            }
+            console.log("FaceMessage:", faceMessage);
+            $('#load').hide();
+            $('#Face').text("Recognition Result: " + faceMessage);
+            return result;
+        }).catch(function(result) {
+            console.log(result);
+        });
+    }
+</script>
+
+</html>
